@@ -36,7 +36,11 @@ struct RSState{K}
     rocks::SVector{K, Bool}
 end
 
-@with_kw struct RockSamplePOMDP{K} <: POMDP{RSState{K}, Int, Int}
+struct Action{type}
+    pos::RSPos
+end
+
+@with_kw struct RockSamplePOMDP{K} <: POMDP{RSState{K}, Action, Int}
     map_size::Tuple{Int, Int} = (5,5)
     rocks_positions::SVector{K,RSPos} = @SVector([(1,1), (3,3), (4,4)])
     init_pos::RSPos = (1,1)

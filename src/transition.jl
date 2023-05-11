@@ -1,36 +1,47 @@
-function POMDPs.transition(pomdp::RockSamplePOMDP{K}, s::RSState{K}, a::Int) where K
-    if isterminal(pomdp, s)
-        return Deterministic(pomdp.terminal_state)
+function T(p::RockSamplePOMDP, pos::RSPos, rocks)
+    if pos[1] > p.map_size[1]
+        return p.terminal_state
     end
-    new_pos = next_position(s, a)
-    if a == BASIC_ACTIONS_DICT[:sample] && in(s.pos, pomdp.rocks_positions)
-        rock_ind = findfirst(isequal(s.pos), pomdp.rocks_positions) # slow ?
-        # set the new rock to bad
-        new_rocks = MVector{K, Bool}(undef)
-        for r=1:K
-            new_rocks[r] = r == rock_ind ? false : s.rocks[r]
-        end
-        new_rocks = SVector(new_rocks)
-    else 
-        new_rocks = s.rocks
-    end
-    if new_pos[1] > pomdp.map_size[1]
-        # the robot reached the exit area
-        new_state = pomdp.terminal_state
-    else
-        new_pos = RSPos(clamp(new_pos[1], 1, pomdp.map_size[1]), 
-                        clamp(new_pos[2], 1, pomdp.map_size[2]))
-        new_state = RSState{K}(new_pos, new_rocks)
-    end
-    return Deterministic(new_state)
+
+    x = clamp(pos[1], 1, p.map_size[1])
+    y = clamp(pos[2], 1, p.map_size[2])
+    pos = RSPos(x, y)
+
+    return RSState(pos, rocks)
 end
 
-function next_position(s::RSState, a::Int)
-    if a > N_BASIC_ACTIONS || a == 1
-        # robot check rocks or samples
-        return s.pos
-    elseif a <= N_BASIC_ACTIONS
-        # the robot moves 
-        return s.pos + ACTION_DIRS[a]
+function POMDPs.transition(p::RockSamplePOMDP, s::RSState, a::SampleAction)
+    if isterminal(p, s)
+        return Deterministic(p.terminal_state)
     end
+
+    rocks = s.rocks
+    if in(s.pos, p.rocks_positions)
+        rock_idx = findfirst(isequal(s.pos), p.rocks_positions)
+        rocks = fill(false, length(rocks))
+        rocks[rock_idx] = s.rocks[rock_idx]
+        rocks = SVector{length(rocks), Bool}(rocks)
+    end
+
+    sp = T(p, s.pos, rocks)
+    return Deterministic(sp)
+end
+
+function POMDPs.transition(p::RockSamplePOMDP, s::RSState, a::MoveAction)
+    if isterminal(p, s)
+        return Deterministic(p.terminal_state)
+    end
+
+    pos = s.pos + a.pos
+    sp = T(p, pos, s.rocks)
+    return Deterministic(sp)
+end
+
+function POMDPs.transition(p::RockSamplePOMDP, s::RSState, a::ScanAction)
+    if isterminal(p, s)
+        return Deterministic(p.terminal_state)
+    end
+
+    sp = T(p, s.pos, s.rocks)
+    return Deterministic(sp)
 end

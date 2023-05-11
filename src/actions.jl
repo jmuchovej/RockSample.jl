@@ -1,30 +1,39 @@
-const N_BASIC_ACTIONS = 5
-const BASIC_ACTIONS_DICT = Dict(:sample => 1,
-                                :north => 2, 
-                                :east => 3,
-                                :south => 4,
-                                :west => 5)
+const MoveAction = Action{:move}
+Move(x::Number, y::Number) = Move(RSPos(x, y))
+Move(pos::RSPos) = Action{:move}(pos)
+const MoveActionN = Move( 0,  1)
+const MoveActionE = Move( 1,  0)
+const MoveActionS = Move( 0, -1)
+const MoveActionW = Move(-1,  0)
 
-const ACTION_DIRS = (RSPos(0,0),
-                    RSPos(0,1),
-                    RSPos(1,0),
-                    RSPos(0,-1),
-                    RSPos(-1,0))
+const SampleAction = Action{:sample}
+Sample() = Action{:sample}(RSPos(0, 0))
 
-POMDPs.actions(pomdp::RockSamplePOMDP{K}) where K = 1:N_BASIC_ACTIONS+K
-POMDPs.actionindex(pomdp::RockSamplePOMDP, a::Int) = a
+const ScanAction = Action{:scan}
+Scan(x::Number, y::Number) = Scan(RSPos(x, y))
+Scan(pos::RSPos) = Action{:scan}(pos)
 
-function POMDPs.actions(pomdp::RockSamplePOMDP{K}, s::RSState) where K
-    if in(s.pos, pomdp.rocks_positions) # slow? pomdp.rock_pos is a vec 
-        return actions(pomdp)
+function POMDPs.actions(p::RockSamplePOMDP{K}) where K
+    move_actions = [MoveActionN, MoveActionE, MoveActionS, MoveActionW]
+    sample = Sample()
+    scan_actions = Scan.(p.rocks_positions)
+
+    return vcat([sample], move_actions, scan_actions)
+end
+
+function POMDPs.actionindex(p::RockSamplePOMDP, a::Action)
+    return findfirst(isequal(a), actions(p))
+end
+
+function POMDPs.actions(p::RockSamplePOMDP{K}, s::RSState) where K
+    if in(s.pos, p.rocks_positions)
+        return actions(p)
     else
-        # sample not available
-        return 2:N_BASIC_ACTIONS+K
+        return filter(a -> !isa(a, SampleAction), actions(p))
     end
 end
 
-function POMDPs.actions(pomdp::RockSamplePOMDP, b)
-    # All states in a belief should have the same position, which is what the valid action space depends on
-    state = rand(Random.GLOBAL_RNG, b) 
-    return actions(pomdp, state)
+function POMDPs.actions(p::RockSamplePOMDP, b)
+    s = rand(Rand.GLOBAL_RNG, b)
+    return actions(p, s)
 end

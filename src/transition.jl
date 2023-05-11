@@ -18,9 +18,11 @@ function POMDPs.transition(p::RockSamplePOMDP, s::RSState, a::SampleAction)
     rocks = s.rocks
     if in(s.pos, p.rocks_positions)
         rock_idx = findfirst(isequal(s.pos), p.rocks_positions)
-        rocks = fill(false, length(rocks))
-        rocks[rock_idx] = s.rocks[rock_idx]
-        rocks = SVector{length(rocks), Bool}(rocks)
+        rocks = MVector{length(rocks), Bool}(undef)
+        for r=1:length(rocks)
+            rocks[r] = r == rock_idx ? false : s.rocks[r]
+        end
+        rocks = SVector(rocks)
     end
 
     sp = T(p, s.pos, rocks)
